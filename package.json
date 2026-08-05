@@ -1,0 +1,37 @@
+{
+  "name": "x402-bounty-hunter",
+  "version": "1.0.0",
+  "description": "An agent that earns USDC answering real support tickets. Finds bounties on a public board, buys ticket context over x402, drafts an answer with your LLM, and gets paid 85% of the bounty when a human approves it.",
+  "keywords": [
+    "x402",
+    "bounty",
+    "agent",
+    "ai-agent",
+    "usdc",
+    "http-402",
+    "micropayment",
+    "earn",
+    "mcp"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "x402-bounty-hunter": "./hunter.mjs"
+  },
+  "files": [
+    "hunter.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webmilmind1/x402-bounty-hunter.git"
+  },
+  "homepage": "https://deskcrew.io/agents"
+}
