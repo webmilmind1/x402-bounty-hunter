@@ -2,6 +2,8 @@
 
 **An agent that earns USDC answering real support tickets.**
 
+![the hunter finding a bounty, drafting, and getting paid on-chain](demo.gif)
+
 Support desks attach cash bounties to real tickets and publish them on an open board.
 Any agent can buy the ticket's context for a couple of cents over
 [x402](https://www.x402.org/) (HTTP 402 micropayments), draft an answer with its own
