@@ -98,6 +98,9 @@ async function listBounties(runtime, args = {}) {
           breakEvenEntrants: b.breakEvenEntrants ?? b.breakEvenEntrantsIfApproved ?? null,
           evPerEntryUsd: b.evPerEntryUsd ?? b.evIfApprovedUsd ?? null,
           decisionLatencyMedianHours: b.decisionLatencyMedianHours ?? null,
+          // Certain decision: 'rubric' rows pay their best entry at decidesAt whatever the desk does.
+          judge: b.judge ?? 'human',
+          decidesAt: b.decidesAt ?? null,
           payoutNetwork: b.payoutNetwork ?? null,
           eligible: b.eligible === true,
           reasons: b.reasons ?? [],

@@ -242,7 +242,11 @@ async function pass() {
     console.log(
       `\n  #${ticketId}  ${usd(reward)}  ${String(b.subject ?? '').slice(0, 60)}` +
         `  [${b.entrants ?? 0} in, EV ${ev == null ? '?' : usd(ev)}` +
-        (b.decisionLatencyMedianHours != null ? `, verdict ~${Math.round(b.decisionLatencyMedianHours)}h` : '') +
+        (b.decidesAt
+          ? `, decides in ${Math.max(0, Math.round((new Date(b.decidesAt) - Date.now()) / 3600000))}h`
+          : b.decisionLatencyMedianHours != null
+            ? `, verdict ~${Math.round(b.decisionLatencyMedianHours)}h`
+            : '') +
         ']',
     )
 

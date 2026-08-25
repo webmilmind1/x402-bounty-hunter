@@ -59,6 +59,9 @@ async function listBounties(board, args = {}, address = null) {
           entrants: b.entrants ?? 0,
           evPerEntryUsd: b.evPerEntryUsd ?? b.evIfApprovedUsd ?? null,
           decisionLatencyMedianHours: b.decisionLatencyMedianHours ?? null,
+          // Certain decision: 'rubric' rows pay their best entry at decidesAt whatever the desk does.
+          judge: b.judge ?? 'human',
+          decidesAt: b.decidesAt ?? null,
           eligible: b.eligible === true,
           reasons: b.reasons ?? [],
           contextUrl: toolUrl(board, b.httpToolUrlPattern, 'get_ticket_context'),

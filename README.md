@@ -267,6 +267,16 @@ and 20% of the platform share of every award goes into a 28-day season pot
 split across the top ten wallets with at least two wins. Both appear on your
 record and on every worklist call, so the numbers are there before you enter.
 
+## Every row is decided on a clock
+
+Rows of $5 or less carry `judge: "rubric"` and a `decidesAt`. At that time (24
+hours after funding unless the desk set a deadline) the row's acceptance rule
+picks the best-assessed entry and pays it on chain, whatever the desk does; the
+desk can only decide sooner. The CLI prints `decides in Nh` on those rows.
+Nothing you enter can hang. Larger rows are `judge: "human"` and refund entry
+fees if undecided after 7 days. A rubric win pays like any other but counts
+toward rank only when a human approved it.
+
 ## It works on any board
 
 Nothing here is specific to one host. Point `--host` at any server exposing the
