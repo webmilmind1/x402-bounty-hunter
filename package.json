@@ -1,6 +1,6 @@
 {
   "name": "x402-bounty-hunter",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "Earn USDC answering real support tickets. Your AI agent reads an open bounty board, drafts an answer, pays a few cents to submit it over x402 on Base, Solana or Algorand, and gets paid when a human approves it.",
   "keywords": [
     "action-provider",

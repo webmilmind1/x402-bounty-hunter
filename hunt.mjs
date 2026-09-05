@@ -16,8 +16,9 @@
  */
 import { readFileSync } from 'node:fs'
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts'
-import { payAndPost, PaymentRefused, NETWORKS, isSolanaKey } from './pay.mjs'
+import { payAndPost, PaymentRefused, NETWORKS, isSolanaKey, isAlgorandKey } from './pay.mjs'
 import { solanaAddressOf } from './pay-svm.mjs'
+import { algorandAddressOf } from './pay-avm.mjs'
 import { draftReply, DraftFailed } from './draft.mjs'
 import { spin, MARK } from './spin.mjs'
 
@@ -87,20 +88,42 @@ if (!key) {
 // Two kinds of wallet are payable, and which one you hold decides which bounties you
 // can COLLECT, not just how you pay. A bounty settles on the chain that funded it, and
 // the address spaces do not overlap.
-const SOLANA = isSolanaKey(key)
-if (!SOLANA && !/^0x[0-9a-fA-F]{64}$/.test(key)) {
-  console.error('\n  WALLET_KEY must be either 0x + 64 hex (EVM) or a base58 Solana secret key.\n')
+// ⚠️ ONE PLACE THAT DECIDES WHICH SPACE THIS KEY BELONGS TO. Written as a two-way
+// Solana-or-EVM test, it silently locked Algorand holders out of the command line even
+// after the payment code learned to route them: the key was refused here, several steps
+// before anything could use it. Money and membership have to cover the same chains.
+const SPACE = isSolanaKey(key) ? 'svm' : isAlgorandKey(key) ? 'avm' : 'evm'
+if (SPACE === 'evm' && !/^0x[0-9a-fA-F]{64}$/.test(key)) {
+  console.error(
+    '\n  WALLET_KEY must be 0x + 64 hex (EVM), a base58 Solana secret key, or a 25-word Algorand mnemonic.\n',
+  )
   process.exit(1)
 }
-const address = SOLANA ? await solanaAddressOf(key) : privateKeyToAccount(key).address
+const address =
+  SPACE === 'svm'
+    ? await solanaAddressOf(key)
+    : SPACE === 'avm'
+      ? await algorandAddressOf(key)
+      : privateKeyToAccount(key).address
 
 /** Can this wallet be PAID for a bounty that settles on `network`? An EVM wallet cannot
  *  receive USDC on Solana, or the reverse, so entering such a bounty means paying the
  *  tool price for work that can never be collected. The board publishes the chain for
  *  exactly this reason; skipping is the whole point of reading it. */
 function payableToMe(network) {
-  const solanaBounty = String(network ?? '').startsWith('solana')
-  return solanaBounty === SOLANA
+  return spaceOf(network) === SPACE
+}
+
+/** Which address space a bounty's payout network belongs to. Explicit rather than a
+ *  fork on one chain name, because "not Solana means EVM" is how the third space got
+ *  excluded from the board it was already being paid by. */
+function spaceOf(network) {
+  const n = String(network ?? '')
+    .trim()
+    .toLowerCase()
+  if (n.startsWith('solana')) return 'svm'
+  if (n.startsWith('algorand')) return 'avm'
+  return 'evm'
 }
 
 let spent = 0
@@ -242,7 +265,9 @@ async function pass() {
         : ''),
   )
   if (!mine.length) {
-    console.log(`  nothing here pays out on ${SOLANA ? 'solana' : 'an EVM chain'} right now`)
+    console.log(
+      `  nothing here pays out on ${{ svm: 'solana', avm: 'algorand', evm: 'an EVM chain' }[SPACE]} right now`,
+    )
     return
   }
 
