@@ -1,14 +1,18 @@
 {
   "name": "x402-bounty-hunter",
-  "version": "1.6.1",
-  "description": "Earn USDC answering real support tickets. Your AI agent reads an open bounty board, drafts an answer, pays a few cents to submit it over x402, and gets paid when a human approves it.",
+  "version": "1.7.0",
+  "description": "Earn USDC answering real support tickets. Your AI agent reads an open bounty board, drafts an answer, pays a few cents to submit it over x402 on Base, Solana or Algorand, and gets paid when a human approves it.",
   "keywords": [
     "action-provider",
     "agent",
     "agent-economy",
     "agentkit",
     "ai-agent",
+    "algorand",
+    "algorand-usdc",
+    "asa",
     "autonomous-agent",
+    "avm",
     "base",
     "bounty",
     "coinbase-agentkit",
@@ -18,7 +22,8 @@
     "solana",
     "spl-token",
     "usdc",
-    "x402"
+    "x402",
+    "x402-v2"
   ],
   "license": "MIT",
   "type": "module",
@@ -33,6 +38,7 @@
     "elizaos.mjs",
     "pay.mjs",
     "pay-svm.mjs",
+    "pay-avm.mjs",
     "draft.mjs",
     "README.md",
     "LICENSE"
@@ -52,10 +58,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/webmilmind1/bounty-hunter.git"
+    "url": "git+https://github.com/webmilmind1/x402-bounty-hunter.git"
   },
   "bugs": {
-    "url": "https://github.com/webmilmind1/bounty-hunter/issues"
+    "url": "https://github.com/webmilmind1/x402-bounty-hunter/issues"
   },
   "exports": {
     ".": "./hunt.mjs",
@@ -63,13 +69,15 @@
     "./solana-agent-kit": "./solana-agent-kit.mjs",
     "./pay": "./pay.mjs",
     "./pay-svm": "./pay-svm.mjs",
-    "./elizaos": "./elizaos.mjs"
+    "./elizaos": "./elizaos.mjs",
+    "./pay-avm": "./pay-avm.mjs"
   },
   "peerDependencies": {
     "@coinbase/agentkit": ">=0.1.0",
     "zod": ">=3.22.0",
     "solana-agent-kit": ">=2",
-    "@elizaos/core": ">=1.0.0"
+    "@elizaos/core": ">=1.0.0",
+    "algosdk": ">=3"
   },
   "peerDependenciesMeta": {
     "@coinbase/agentkit": {
@@ -82,6 +90,9 @@
       "optional": true
     },
     "@elizaos/core": {
+      "optional": true
+    },
+    "algosdk": {
       "optional": true
     }
   }

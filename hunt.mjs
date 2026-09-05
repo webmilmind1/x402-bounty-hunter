@@ -109,14 +109,17 @@ let submitted = 0
 
 const usd = (n) => `$${Number(n).toFixed(2)}`
 
-const REQUEST_ACCESS = process.argv.includes('--request-access') || process.env.REQUEST_ACCESS === 'true'
+const REQUEST_ACCESS =
+  process.argv.includes('--request-access') || process.env.REQUEST_ACCESS === 'true'
 
 /** The board, ranked for THIS wallet. Free: no payment, no account. The worklist
  *  runs the door's own checks (chain, entry limit, gated desk) and prices every
  *  row with the published EV math, so nothing here is entered blind. It also
  *  carries this wallet's record and the season pot, printed once per pass. */
 async function worklist() {
-  const res = await fetch(`${HOST}/api/arena/worklist/${address}`, { signal: AbortSignal.timeout(20_000) })
+  const res = await fetch(`${HOST}/api/arena/worklist/${address}`, {
+    signal: AbortSignal.timeout(20_000),
+  })
   if (!res.ok) throw new Error(`board returned ${res.status}`)
   return res.json()
 }
@@ -189,11 +192,15 @@ async function pass() {
     const sn = wl.season
     console.log(
       `  season ${sn.season?.number}: pot ${usd(sn.potUsd)}` +
-        (sn.you?.rank ? `, you are rank ${sn.you.rank} (projected ${usd(sn.you.projectedUsd)})` : `, to qualify: ${(sn.you?.toEligible ?? []).join(' and ') || 'eligible'}`),
+        (sn.you?.rank
+          ? `, you are rank ${sn.you.rank} (projected ${usd(sn.you.projectedUsd)})`
+          : `, to qualify: ${(sn.you?.toEligible ?? []).join(' and ') || 'eligible'}`),
     )
   }
   if (wl?.missed?.paidToOthersUsd > 0) {
-    console.log(`  missed: ${usd(wl.missed.paidToOthersUsd)} paid to others this week on rows you never entered`)
+    console.log(
+      `  missed: ${usd(wl.missed.paidToOthersUsd)} paid to others this week on rows you never entered`,
+    )
   }
   if (!bounties.length) {
     console.log('  no open bounties right now')
@@ -218,7 +225,9 @@ async function pass() {
     if (REQUEST_ACCESS) {
       for (const slug of desks) {
         const r = await requestDeskAccess(slug)
-        console.log(`    asked ${slug}: ${r?.status ?? 'no reply'}${r?.ticketId ? ` (ticket ${r.ticketId})` : ''}`)
+        console.log(
+          `    asked ${slug}: ${r?.status ?? 'no reply'}${r?.ticketId ? ` (ticket ${r.ticketId})` : ''}`,
+        )
       }
     } else {
       console.log('    run with --request-access to ask their owners (free)')
@@ -228,7 +237,9 @@ async function pass() {
   const skipped = bounties.length - mine.length
   console.log(
     `  ${bounties.length} open, ${mine.length} enterable now` +
-      (skipped ? ` (${skipped} skipped: ${[...new Set(bounties.flatMap((b) => b.reasons ?? []))].join(', ') || 'not eligible'})` : ''),
+      (skipped
+        ? ` (${skipped} skipped: ${[...new Set(bounties.flatMap((b) => b.reasons ?? []))].join(', ') || 'not eligible'})`
+        : ''),
   )
   if (!mine.length) {
     console.log(`  nothing here pays out on ${SOLANA ? 'solana' : 'an EVM chain'} right now`)

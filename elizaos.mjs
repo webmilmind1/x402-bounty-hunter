@@ -123,19 +123,24 @@ async function listBounties(runtime, args = {}) {
     }
   }
   const res = await fetch(`${board}/api/arena/contests?limit=50`).catch(() => null)
-  if (!res?.ok) return { status: 'error', message: `board unreachable (${res?.status ?? 'network'})` }
+  if (!res?.ok)
+    return { status: 'error', message: `board unreachable (${res?.status ?? 'network'})` }
   const data = await res.json()
   const k = String(setting(runtime, 'DESKCREW_WALLET_KEY')).trim()
   const wantSolana = k ? isSolanaKey(k) : null
   const rows = (data.bounties ?? [])
     .filter((b) => {
       if (wantSolana == null) return true
-      const isSol = String(b.payoutNetwork || '').toLowerCase().startsWith('solana')
+      const isSol = String(b.payoutNetwork || '')
+        .toLowerCase()
+        .startsWith('solana')
       return wantSolana ? isSol : !isSol
     })
     .filter((b) => (args.minBountyUsd == null ? true : b.bountyUsd >= args.minBountyUsd))
     .filter((b) => (args.maxEntrants == null ? true : (b.entrants ?? 0) <= args.maxEntrants))
-    .sort((a, b) => (a.entrants ?? 0) - (b.entrants ?? 0) || (b.bountyUsd ?? 0) - (a.bountyUsd ?? 0))
+    .sort(
+      (a, b) => (a.entrants ?? 0) - (b.entrants ?? 0) || (b.bountyUsd ?? 0) - (a.bountyUsd ?? 0),
+    )
     .slice(0, args.limit ?? 10)
     .map((b) => ({
       ticketId: b.ticketId,
@@ -172,9 +177,24 @@ export const listSupportBountiesAction = {
   routingHint:
     'Use when asked to find paid work, earn USDC, or check the bounty board. Not for looking up past earnings (CHECK_BOUNTY_EARNINGS).',
   parameters: [
-    { name: 'minBountyUsd', description: 'Only rows paying at least this much', required: false, schema: { type: 'number' } },
-    { name: 'maxEntrants', description: 'Skip rows more contested than this', required: false, schema: { type: 'number' } },
-    { name: 'limit', description: 'Max rows, default 10', required: false, schema: { type: 'integer' } },
+    {
+      name: 'minBountyUsd',
+      description: 'Only rows paying at least this much',
+      required: false,
+      schema: { type: 'number' },
+    },
+    {
+      name: 'maxEntrants',
+      description: 'Skip rows more contested than this',
+      required: false,
+      schema: { type: 'number' },
+    },
+    {
+      name: 'limit',
+      description: 'Max rows, default 10',
+      required: false,
+      schema: { type: 'integer' },
+    },
   ],
   validate: async () => true,
   handler: async (runtime, _message, _state, options, callback) => {
@@ -189,7 +209,13 @@ export const listSupportBountiesAction = {
   examples: [
     [
       { name: '{{user}}', content: { text: 'Find some paid work for this agent' } },
-      { name: '{{agent}}', content: { text: 'Checking the bounty board for open USDC rewards.', actions: ['LIST_SUPPORT_BOUNTIES'] } },
+      {
+        name: '{{agent}}',
+        content: {
+          text: 'Checking the bounty board for open USDC rewards.',
+          actions: ['LIST_SUPPORT_BOUNTIES'],
+        },
+      },
     ],
   ],
 }
@@ -199,9 +225,15 @@ export const checkBountyEarningsAction = {
   similes: ['BOUNTY_EARNINGS', 'MY_BOUNTY_RECORD', 'CHECK_REPUTATION'],
   description:
     "A wallet's public record on the bounty board: approvals, rejections with the human reviewer's written reasons (act on them, they say exactly what to fix), trust tier, rank, and USDC earnings. Free.",
-  routingHint: 'Use for earnings, reputation, or rejection feedback. Pass the wallet address as the wallet parameter.',
+  routingHint:
+    'Use for earnings, reputation, or rejection feedback. Pass the wallet address as the wallet parameter.',
   parameters: [
-    { name: 'wallet', description: 'The wallet address to look up (0x… or base58)', required: true, schema: { type: 'string' } },
+    {
+      name: 'wallet',
+      description: 'The wallet address to look up (0x… or base58)',
+      required: true,
+      schema: { type: 'string' },
+    },
   ],
   validate: async () => true,
   handler: async (runtime, message, _state, options, callback) => {
@@ -228,7 +260,10 @@ export const checkBountyEarningsAction = {
   examples: [
     [
       { name: '{{user}}', content: { text: 'How much has this wallet earned on the board?' } },
-      { name: '{{agent}}', content: { text: 'Reading its public bounty record.', actions: ['CHECK_BOUNTY_EARNINGS'] } },
+      {
+        name: '{{agent}}',
+        content: { text: 'Reading its public bounty record.', actions: ['CHECK_BOUNTY_EARNINGS'] },
+      },
     ],
   ],
 }
@@ -240,26 +275,46 @@ export const buyTicketContextAction = {
     'Buy the full context of a bounty ticket (customer message, history, relevant knowledge) for a few cents in USDC via x402. Do this before writing an answer.',
   routingHint: 'Use after LIST_SUPPORT_BOUNTIES picked a ticket, before drafting.',
   parameters: [
-    { name: 'ticketId', description: 'The bounty ticket id from LIST_SUPPORT_BOUNTIES', required: true, schema: { type: 'integer' } },
+    {
+      name: 'ticketId',
+      description: 'The bounty ticket id from LIST_SUPPORT_BOUNTIES',
+      required: true,
+      schema: { type: 'integer' },
+    },
   ],
   validate: async () => true,
   handler: async (runtime, message, _state, options, callback) => {
-    const ticketId = num(options?.parameters?.ticketId) ?? num((message?.content?.text ?? '').match(/\d{1,8}/)?.[0])
+    const ticketId =
+      num(options?.parameters?.ticketId) ??
+      num((message?.content?.text ?? '').match(/\d{1,8}/)?.[0])
     if (!ticketId) {
       const text = 'No ticket id found. List bounties first.'
       await callback?.({ text })
       return { success: false, text }
     }
-    const out = await payTool(runtime, 'get_ticket_context', { ticketId }, capOf(runtime, 'DESKCREW_MAX_PRICE_USD', 0.25))
+    const out = await payTool(
+      runtime,
+      'get_ticket_context',
+      { ticketId },
+      capOf(runtime, 'DESKCREW_MAX_PRICE_USD', 0.25),
+    )
     const ok = out?.status !== 'error'
-    const text = ok ? `Bought context for ticket ${ticketId}.` : `Could not buy context: ${out.message}`
+    const text = ok
+      ? `Bought context for ticket ${ticketId}.`
+      : `Could not buy context: ${out.message}`
     await callback?.({ text })
     return { success: ok, text, data: out }
   },
   examples: [
     [
       { name: '{{user}}', content: { text: 'Get the details of bounty ticket 134' } },
-      { name: '{{agent}}', content: { text: 'Paying the small fee for the full ticket context.', actions: ['BUY_TICKET_CONTEXT'] } },
+      {
+        name: '{{agent}}',
+        content: {
+          text: 'Paying the small fee for the full ticket context.',
+          actions: ['BUY_TICKET_CONTEXT'],
+        },
+      },
     ],
   ],
 }
@@ -269,10 +324,21 @@ export const submitBountyDraftAction = {
   similes: ['ENTER_BOUNTY', 'SUBMIT_ANSWER', 'ANSWER_TICKET'],
   description:
     'Submit an answer to a bounty ticket as a draft entry, paying the few-cent entry via x402. A human at the business reviews every entry; approval pays the submitting wallet 85% of the bounty in USDC. Rejections come back with a written reason on the public record.',
-  routingHint: 'Use once a grounded answer is written. The answer goes in the body parameter, complete and customer-ready.',
+  routingHint:
+    'Use once a grounded answer is written. The answer goes in the body parameter, complete and customer-ready.',
   parameters: [
-    { name: 'ticketId', description: 'The bounty ticket id', required: true, schema: { type: 'integer' } },
-    { name: 'body', description: 'The complete answer to the customer', required: true, schema: { type: 'string' } },
+    {
+      name: 'ticketId',
+      description: 'The bounty ticket id',
+      required: true,
+      schema: { type: 'integer' },
+    },
+    {
+      name: 'body',
+      description: 'The complete answer to the customer',
+      required: true,
+      schema: { type: 'string' },
+    },
   ],
   validate: async () => true,
   handler: async (runtime, _message, _state, options, callback) => {
@@ -283,7 +349,12 @@ export const submitBountyDraftAction = {
       await callback?.({ text })
       return { success: false, text }
     }
-    const out = await payTool(runtime, 'draft_reply', { ticketId, body }, capOf(runtime, 'DESKCREW_MAX_PRICE_USD', 0.25))
+    const out = await payTool(
+      runtime,
+      'draft_reply',
+      { ticketId, body },
+      capOf(runtime, 'DESKCREW_MAX_PRICE_USD', 0.25),
+    )
     const ok = out?.status !== 'error'
     const text = ok
       ? `Draft submitted for ticket ${ticketId}. A human reviews it; approval pays this wallet 85% of the bounty.`
@@ -294,7 +365,13 @@ export const submitBountyDraftAction = {
   examples: [
     [
       { name: '{{user}}', content: { text: 'Submit that answer to bounty 134' } },
-      { name: '{{agent}}', content: { text: 'Paying the entry fee and filing the draft for human review.', actions: ['SUBMIT_BOUNTY_DRAFT'] } },
+      {
+        name: '{{agent}}',
+        content: {
+          text: 'Paying the entry fee and filing the draft for human review.',
+          actions: ['SUBMIT_BOUNTY_DRAFT'],
+        },
+      },
     ],
   ],
 }
@@ -307,7 +384,12 @@ export const createBountyBoardAction = {
   routingHint:
     'Use when the goal is to POST paid work for other agents rather than answer it. Requires DESKCREW_WALLET_KEY holding at least $5 USDC.',
   parameters: [
-    { name: 'name', description: 'A name for the board (3 to 60 characters); the URL slug derives from it', required: true, schema: { type: 'string' } },
+    {
+      name: 'name',
+      description: 'A name for the board (3 to 60 characters); the URL slug derives from it',
+      required: true,
+      schema: { type: 'string' },
+    },
   ],
   validate: async () => true,
   handler: async (runtime, _message, _state, options, callback) => {
@@ -317,7 +399,12 @@ export const createBountyBoardAction = {
       await callback?.({ text })
       return { success: false, text }
     }
-    const out = await payTool(runtime, 'create_board', { name }, capOf(runtime, 'DESKCREW_MAX_BOARD_PRICE_USD', 5))
+    const out = await payTool(
+      runtime,
+      'create_board',
+      { name },
+      capOf(runtime, 'DESKCREW_MAX_BOARD_PRICE_USD', 5),
+    )
     const ok = out?.status !== 'error' && !out?.error
     const text = ok
       ? `Board created: ${out.board_url ?? out.board_slug}. STORE THE api_key NOW: it is shown only once.`
@@ -327,8 +414,17 @@ export const createBountyBoardAction = {
   },
   examples: [
     [
-      { name: '{{user}}', content: { text: 'Open our own bounty board called Prompt Research Desk' } },
-      { name: '{{agent}}', content: { text: 'Paying $5 to create a board owned by this wallet.', actions: ['CREATE_BOUNTY_BOARD'] } },
+      {
+        name: '{{user}}',
+        content: { text: 'Open our own bounty board called Prompt Research Desk' },
+      },
+      {
+        name: '{{agent}}',
+        content: {
+          text: 'Paying $5 to create a board owned by this wallet.',
+          actions: ['CREATE_BOUNTY_BOARD'],
+        },
+      },
     ],
   ],
 }
@@ -342,7 +438,12 @@ export const rotateBoardKeyAction = {
   parameters: [],
   validate: async () => true,
   handler: async (runtime, _message, _state, _options, callback) => {
-    const out = await payTool(runtime, 'rotate_board_key', { confirm: true }, capOf(runtime, 'DESKCREW_MAX_PRICE_USD', 0.25))
+    const out = await payTool(
+      runtime,
+      'rotate_board_key',
+      { confirm: true },
+      capOf(runtime, 'DESKCREW_MAX_PRICE_USD', 0.25),
+    )
     const ok = out?.status !== 'error' && !out?.error
     const text = ok
       ? 'Keys rotated. STORE THE new api_key NOW: it is shown only once.'
@@ -353,7 +454,13 @@ export const rotateBoardKeyAction = {
   examples: [
     [
       { name: '{{user}}', content: { text: 'Our board key leaked, rotate it' } },
-      { name: '{{agent}}', content: { text: 'Revoking every old key and minting a fresh one from the owner wallet.', actions: ['ROTATE_BOARD_KEY'] } },
+      {
+        name: '{{agent}}',
+        content: {
+          text: 'Revoking every old key and minting a fresh one from the owner wallet.',
+          actions: ['ROTATE_BOARD_KEY'],
+        },
+      },
     ],
   ],
 }
@@ -363,11 +470,27 @@ export const subscribeEventsAction = {
   similes: ['GET_WOKEN', 'BOUNTY_WEBHOOK', 'WATCH_THE_BOARD'],
   description:
     'Stop polling. Pay $0.02 once to register an https URL for pushed events from the board: row.available (a row this wallet can earn on opened, payload is the worklist row), draft.decided (your entry was approved or rejected, with the reason), payout.sent (USDC left for your wallet, with the transaction hash). Deliveries are HMAC-signed (X-Desk-Signature); the secret is returned once. Calling again for the same URL rotates the secret and replaces the events; pass events [] to disable.',
-  routingHint: 'Use when the agent has an https endpoint and wants to be notified instead of listing bounties on a timer.',
+  routingHint:
+    'Use when the agent has an https endpoint and wants to be notified instead of listing bounties on a timer.',
   parameters: [
-    { name: 'url', description: 'https endpoint to POST events to', required: true, schema: { type: 'string' } },
-    { name: 'events', description: 'Array from: row.available, draft.decided, payout.sent', required: false, schema: { type: 'array' } },
-    { name: 'minBountyUsd', description: 'Only send row.available at or above this bounty', required: false, schema: { type: 'number' } },
+    {
+      name: 'url',
+      description: 'https endpoint to POST events to',
+      required: true,
+      schema: { type: 'string' },
+    },
+    {
+      name: 'events',
+      description: 'Array from: row.available, draft.decided, payout.sent',
+      required: false,
+      schema: { type: 'array' },
+    },
+    {
+      name: 'minBountyUsd',
+      description: 'Only send row.available at or above this bounty',
+      required: false,
+      schema: { type: 'number' },
+    },
   ],
   validate: async () => true,
   handler: async (runtime, _message, _state, options, callback) => {
@@ -377,12 +500,19 @@ export const subscribeEventsAction = {
       await callback?.({ text })
       return { success: false, text }
     }
-    const events = Array.isArray(options?.parameters?.events) && options.parameters.events.length
-      ? options.parameters.events
-      : ['row.available', 'draft.decided', 'payout.sent']
+    const events =
+      Array.isArray(options?.parameters?.events) && options.parameters.events.length
+        ? options.parameters.events
+        : ['row.available', 'draft.decided', 'payout.sent']
     const body = { url, events }
-    if (options?.parameters?.minBountyUsd != null) body.min_bounty_usd = Number(options.parameters.minBountyUsd)
-    const out = await payTool(runtime, 'subscribe_events', body, capOf(runtime, 'DESKCREW_MAX_PRICE_USD', 0.25))
+    if (options?.parameters?.minBountyUsd != null)
+      body.min_bounty_usd = Number(options.parameters.minBountyUsd)
+    const out = await payTool(
+      runtime,
+      'subscribe_events',
+      body,
+      capOf(runtime, 'DESKCREW_MAX_PRICE_USD', 0.25),
+    )
     const ok = out?.status !== 'error' && !out?.error
     const text = ok
       ? `Subscribed ${url} to ${events.join(', ')}. STORE THE SECRET NOW: it is shown only once.`
@@ -392,8 +522,14 @@ export const subscribeEventsAction = {
   },
   examples: [
     [
-      { name: '{{user}}', content: { text: 'Notify our endpoint when there is bounty work or a payout' } },
-      { name: '{{agent}}', content: { text: 'Registering the webhook with the board.', actions: ['SUBSCRIBE_EVENTS'] } },
+      {
+        name: '{{user}}',
+        content: { text: 'Notify our endpoint when there is bounty work or a payout' },
+      },
+      {
+        name: '{{agent}}',
+        content: { text: 'Registering the webhook with the board.', actions: ['SUBSCRIBE_EVENTS'] },
+      },
     ],
   ],
 }
@@ -403,38 +539,63 @@ export const requestDeskAccessAction = {
   similes: ['ASK_DESK_OWNER', 'GATED_DESK_ACCESS'],
   description:
     'Free. A desk that admits only allowed wallets shows credential_required on its rows. This asks its owner to allow this wallet: the request lands as a ticket with the wallet record linked; once allowed, payments from this wallet pass on that desk with no key. One open request per wallet per desk.',
-  routingHint: 'Use when LIST_SUPPORT_BOUNTIES shows credential_required for a desk worth working. Pass the desk slug.',
+  routingHint:
+    'Use when LIST_SUPPORT_BOUNTIES shows credential_required for a desk worth working. Pass the desk slug.',
   parameters: [
-    { name: 'desk', description: 'The desk slug (from the bounty row)', required: true, schema: { type: 'string' } },
-    { name: 'note', description: 'Why you want to work it (optional, 500 chars)', required: false, schema: { type: 'string' } },
+    {
+      name: 'desk',
+      description: 'The desk slug (from the bounty row)',
+      required: true,
+      schema: { type: 'string' },
+    },
+    {
+      name: 'note',
+      description: 'Why you want to work it (optional, 500 chars)',
+      required: false,
+      schema: { type: 'string' },
+    },
   ],
   validate: async () => true,
   handler: async (runtime, _message, _state, options, callback) => {
     const desk = typeof options?.parameters?.desk === 'string' ? options.parameters.desk.trim() : ''
     const address = await addressOf(runtime)
     if (!desk || !address) {
-      const text = !desk ? 'REQUEST_DESK_ACCESS needs the desk slug.' : 'No wallet configured (DESKCREW_WALLET_KEY).'
+      const text = !desk
+        ? 'REQUEST_DESK_ACCESS needs the desk slug.'
+        : 'No wallet configured (DESKCREW_WALLET_KEY).'
       await callback?.({ text })
       return { success: false, text }
     }
     const board = boardOf(runtime)
     const body = { wallet: address }
-    if (typeof options?.parameters?.note === 'string' && options.parameters.note.trim()) body.note = options.parameters.note.trim().slice(0, 500)
-    const res = await fetch(`${board}/api/x402/tools/${encodeURIComponent(desk)}/request_desk_access`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    }).catch(() => null)
+    if (typeof options?.parameters?.note === 'string' && options.parameters.note.trim())
+      body.note = options.parameters.note.trim().slice(0, 500)
+    const res = await fetch(
+      `${board}/api/x402/tools/${encodeURIComponent(desk)}/request_desk_access`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      },
+    ).catch(() => null)
     const out = res ? await res.json().catch(() => ({})) : { error: 'network' }
     const ok = Boolean(res?.ok) && !out?.error
-    const text = ok ? `Asked ${desk}: ${out.status}${out.ticketId ? ` (ticket ${out.ticketId})` : ''}.` : `Could not ask ${desk}: ${out?.message ?? out?.error ?? res?.status}`
+    const text = ok
+      ? `Asked ${desk}: ${out.status}${out.ticketId ? ` (ticket ${out.ticketId})` : ''}.`
+      : `Could not ask ${desk}: ${out?.message ?? out?.error ?? res?.status}`
     await callback?.({ text })
     return { success: ok, text, data: out }
   },
   examples: [
     [
       { name: '{{user}}', content: { text: 'Ask the acme desk to let our wallet in' } },
-      { name: '{{agent}}', content: { text: 'Sending the free access request with our record.', actions: ['REQUEST_DESK_ACCESS'] } },
+      {
+        name: '{{agent}}',
+        content: {
+          text: 'Sending the free access request with our record.',
+          actions: ['REQUEST_DESK_ACCESS'],
+        },
+      },
     ],
   ],
 }

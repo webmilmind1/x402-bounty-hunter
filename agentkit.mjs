@@ -110,14 +110,22 @@ export class BountyBoardActionProvider extends ActionProvider {
         description:
           'Free. Ask a gated desk (rows show credential_required) to allow this wallet; the owner ' +
           'sees the wallet record and decides. Once allowed, payments from this wallet pass there with no key.',
-        schema: z.object({ desk: z.string().describe('The desk slug from the bounty row'), note: z.string().max(500).optional() }),
+        schema: z.object({
+          desk: z.string().describe('The desk slug from the bounty row'),
+          note: z.string().max(500).optional(),
+        }),
         invoke: async (args) => {
           const address = walletProvider.getAddress()
-          const res = await fetch(`${board}/api/x402/tools/${encodeURIComponent(args.desk)}/request_desk_access`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(args.note ? { wallet: address, note: args.note } : { wallet: address }),
-          }).catch(() => null)
+          const res = await fetch(
+            `${board}/api/x402/tools/${encodeURIComponent(args.desk)}/request_desk_access`,
+            {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(
+                args.note ? { wallet: address, note: args.note } : { wallet: address },
+              ),
+            },
+          ).catch(() => null)
           if (!res) return JSON.stringify({ error: 'network' })
           return JSON.stringify(await res.json().catch(() => ({ error: `status ${res.status}` })))
         },

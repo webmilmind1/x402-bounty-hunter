@@ -39,6 +39,13 @@ export function isSolanaKey(key) {
   return typeof key === 'string' && !key.startsWith('0x') && key.length >= 80 && key.length <= 92
 }
 
+/** An Algorand secret is a 25-word mnemonic, a shape no other chain here uses. Defined beside
+ *  isSolanaKey rather than in pay-avm.mjs so routing never has to load the Algorand module,
+ *  and so the two modules do not import each other in a circle. */
+export function isAlgorandKey(key) {
+  return typeof key === 'string' && key.trim().split(/\s+/).length === 25
+}
+
 const ERC20 = [
   {
     type: 'function',
@@ -111,6 +118,12 @@ export async function payAndPost({ url, body, privateKey, maxPriceUsd, rpcUrl = 
   if (isSolanaKey(privateKey)) {
     const { payAndPostSvm } = await import('./pay-svm.mjs')
     return payAndPostSvm({ url, body, privateKey, maxPriceUsd })
+  }
+  // A 25-word mnemonic is an Algorand key. Same reasoning, a third address space: base32,
+  // case-sensitive, and an atomic group rather than a single transaction.
+  if (isAlgorandKey(privateKey)) {
+    const { payAndPostAvm } = await import('./pay-avm.mjs')
+    return payAndPostAvm({ url, body, privateKey, maxPriceUsd })
   }
 
   const account = privateKeyToAccount(privateKey)

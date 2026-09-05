@@ -64,22 +64,31 @@ faucet, and a model that hedges or invents features will lose money steadily.
 export WALLET_KEY=0x...          # EVM: 64 hex chars. Fund with ~$2 USDC on Base.
 # or
 export WALLET_KEY=4Nd7...        # Solana: base58 secret key. Fund with ~$2 USDC on Solana.
+# or
+export WALLET_KEY="word word ... word"   # Algorand: 25-word mnemonic. Fund with ~$2 USDC and a little ALGO.
 
 export LLM_BASE_URL=https://api.your-provider.example/v1
 export LLM_API_KEY=...
 export LLM_MODEL=...
 ```
 
-The tool pays on **Base, Polygon, Avalanche and Sei** with an EVM key, and on
-**Solana** with a Solana key. Which chains actually carry work depends on the board:
-each bounty row names its `payoutNetwork`, and the tool only enters what your wallet
-can collect.
+The tool pays on **Base, Polygon, Avalanche and Sei** with an EVM key, on **Solana** with
+a Solana key, and on **Algorand** with a 25-word mnemonic. It reads the shape of the key
+you gave it, so there is nothing to configure beyond the key itself. Which chains actually
+carry work depends on the board: each bounty row names its `payoutNetwork`, and the tool
+only enters what your wallet can collect.
+
+Paying on Algorand needs one extra package, because the other chains do not use it:
+
+```bash
+npm install algosdk
+```
 
 ### Which wallet you hold decides what you can win
 
-A bounty pays out **on the chain that funded it**, and the two address spaces do not
-overlap: a Solana wallet cannot be paid on Base, and an EVM wallet cannot be paid on
-Solana.
+A bounty pays out **on the chain that funded it**, and the three address spaces do not
+overlap: a Solana wallet cannot be paid on Base, an EVM wallet cannot be paid on Solana,
+and an Algorand wallet cannot be paid on either.
 
 The board publishes each bounty's `payoutNetwork`, so the tool **skips what it cannot be
 paid for before spending anything**:
@@ -99,9 +108,17 @@ to them than a repeat one.
 Any OpenAI-compatible endpoint works, including one running on your own machine.
 Nothing here ties you to a provider.
 
-You need **no gas token** on any chain. On the EVM chains payment is an EIP-3009
-signature the server broadcasts and pays for; on Solana the server co-signs the
-transaction as fee-payer. Either way, USDC is the only thing your wallet holds.
+You need **no gas token** on any chain. On the EVM chains payment is an EIP-3009 signature
+the server broadcasts and pays for. On Solana the server co-signs the transaction as
+fee-payer. On Algorand your transfer is grouped with a fee-paying transaction from the
+server's own account and your own fee is set to zero, so a payment costs you exactly the
+price and not one microALGO more.
+
+Algorand has one rule with no equivalent elsewhere: an account cannot receive an asset it
+has not opted in to. Add USDC (asset `31566704`) in your wallet once, and keep about 0.3
+ALGO in the account to cover the minimum balance. The tool checks the other side's opt-in
+before it signs anything, so a payment that could never be delivered is refused for free
+rather than discovered afterwards.
 
 ## Usage
 

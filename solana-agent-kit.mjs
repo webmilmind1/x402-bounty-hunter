@@ -67,7 +67,14 @@ async function listBounties(board, args = {}, address = null) {
           contextUrl: toolUrl(board, b.httpToolUrlPattern, 'get_ticket_context'),
           draftUrl: toolUrl(board, b.httpToolUrlPattern, 'draft_reply'),
         }))
-      return { status: 'success', count: rows.length, bounties: rows, record: wl.record ?? null, season: wl.season ?? null, missed: wl.missed ?? null }
+      return {
+        status: 'success',
+        count: rows.length,
+        bounties: rows,
+        record: wl.record ?? null,
+        season: wl.season ?? null,
+        missed: wl.missed ?? null,
+      }
     }
   }
   const res = await fetch(`${board}/api/arena/contests?limit=50`)
@@ -187,7 +194,8 @@ export function bountyBoardPlugin(config = {}) {
       maxEntrants: z.number().optional().describe('Skip rows more contested than this'),
       limit: z.number().int().min(1).max(25).optional().describe('Max rows, default 10'),
     }),
-    handler: async (agent, input) => listBounties(board, input ?? {}, agent?.wallet?.publicKey?.toBase58?.() ?? null),
+    handler: async (agent, input) =>
+      listBounties(board, input ?? {}, agent?.wallet?.publicKey?.toBase58?.() ?? null),
   }
 
   const CHECK_BOUNTY_EARNINGS = {
@@ -283,7 +291,11 @@ export function bountyBoardPlugin(config = {}) {
       ],
     ],
     schema: z.object({
-      name: z.string().min(3).max(60).describe('A name for the board; the URL slug derives from it'),
+      name: z
+        .string()
+        .min(3)
+        .max(60)
+        .describe('A name for the board; the URL slug derives from it'),
     }),
     handler: async (_agent, input) => methods.createBountyBoard(input.name),
   }
@@ -311,19 +323,32 @@ export function bountyBoardPlugin(config = {}) {
   methods.subscribeEvents = async (url, events, minBountyUsd) => {
     const k = spendKey(config)
     if (k.error) return { status: 'error', message: k.error }
-    const body = { url, events: events?.length ? events : ['row.available', 'draft.decided', 'payout.sent'] }
+    const body = {
+      url,
+      events: events?.length ? events : ['row.available', 'draft.decided', 'payout.sent'],
+    }
     if (minBountyUsd != null) body.min_bounty_usd = Number(minBountyUsd)
-    return payAndPostSvm({ url: `${board}/api/x402/tools/deskcrew/subscribe_events`, body, privateKey: k.key, maxPriceUsd })
+    return payAndPostSvm({
+      url: `${board}/api/x402/tools/deskcrew/subscribe_events`,
+      body,
+      privateKey: k.key,
+      maxPriceUsd,
+    })
   }
   methods.requestDeskAccess = async (agent, desk, note) => {
     const wallet = agent?.wallet?.publicKey?.toBase58?.()
     if (!wallet) return { status: 'error', message: 'no wallet on the agent' }
-    const res = await fetch(`${board}/api/x402/tools/${encodeURIComponent(desk)}/request_desk_access`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(note ? { wallet, note: String(note).slice(0, 500) } : { wallet }),
-    }).catch(() => null)
-    return res ? res.json().catch(() => ({ status: 'error' })) : { status: 'error', message: 'network' }
+    const res = await fetch(
+      `${board}/api/x402/tools/${encodeURIComponent(desk)}/request_desk_access`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(note ? { wallet, note: String(note).slice(0, 500) } : { wallet }),
+      },
+    ).catch(() => null)
+    return res
+      ? res.json().catch(() => ({ status: 'error' }))
+      : { status: 'error', message: 'network' }
   }
 
   const SUBSCRIBE_EVENTS = {
@@ -331,13 +356,22 @@ export function bountyBoardPlugin(config = {}) {
     similes: ['GET_WOKEN', 'BOUNTY_WEBHOOK'],
     description:
       'Pay $0.02 once to register an https URL for pushed events: row.available (a row this wallet can earn on opened), draft.decided (your entry was decided, with the reason), payout.sent (USDC left for you, with the tx hash). HMAC-signed; the secret is returned once. Re-run on the same URL to rotate; events [] disables.',
-    examples: [[{ input: { url: 'https://agent.example/hook' }, output: { status: 'success' }, explanation: 'Register a webhook so the agent stops polling' }]],
+    examples: [
+      [
+        {
+          input: { url: 'https://agent.example/hook' },
+          output: { status: 'success' },
+          explanation: 'Register a webhook so the agent stops polling',
+        },
+      ],
+    ],
     schema: z.object({
       url: z.string().url(),
       events: z.array(z.enum(['row.available', 'draft.decided', 'payout.sent'])).optional(),
       minBountyUsd: z.number().optional(),
     }),
-    handler: async (_agent, input) => methods.subscribeEvents(input.url, input.events, input.minBountyUsd),
+    handler: async (_agent, input) =>
+      methods.subscribeEvents(input.url, input.events, input.minBountyUsd),
   }
 
   const REQUEST_DESK_ACCESS = {
@@ -345,7 +379,15 @@ export function bountyBoardPlugin(config = {}) {
     similes: ['ASK_DESK_OWNER'],
     description:
       'Free. Ask a gated desk (rows show credential_required) to allow this wallet; the owner sees the wallet record and decides. Once allowed, payments from this wallet pass on that desk with no key.',
-    examples: [[{ input: { desk: 'acme' }, output: { status: 'requested' }, explanation: 'Ask the acme desk to admit this wallet' }]],
+    examples: [
+      [
+        {
+          input: { desk: 'acme' },
+          output: { status: 'requested' },
+          explanation: 'Ask the acme desk to admit this wallet',
+        },
+      ],
+    ],
     schema: z.object({ desk: z.string(), note: z.string().max(500).optional() }),
     handler: async (agent, input) => methods.requestDeskAccess(agent, input.desk, input.note),
   }
