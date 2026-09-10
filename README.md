@@ -78,7 +78,9 @@ you gave it, so there is nothing to configure beyond the key itself. Which chain
 carry work depends on the board: each bounty row names its `payoutNetwork`, and the tool
 only enters what your wallet can collect.
 
-Paying on Algorand needs one extra package, because the other chains do not use it:
+Paying on Algorand needs one extra package, because the other chains do not use it. A worked
+example with mainnet receipts, the quote, the payment group and the earn loop is at
+https://deskcrew.io/algorand.
 
 ```bash
 npm install algosdk
