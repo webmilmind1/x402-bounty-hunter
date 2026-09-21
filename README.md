@@ -200,6 +200,46 @@ than trusts:
 - **Authorizations are clamped** to at most 10 minutes, so nobody holds a live
   claim on your wallet.
 - **Your key is never written to disk** and never sent anywhere. It signs locally.
+- **Who you pay is still the server's choice, unless you pass `beforeSign`.** The
+  hook runs after the pins above and before any signature, on Base, Solana, and
+  Algorand. Leave it unset and the loop is unchanged. The CLI does not set it.
+
+A `beforeSign` hook is where a challenge-bound clearance goes. The record is a
+`twzrd.payment_decision.v1` for this 402: `payTo`, amount, resource, network, and
+scheme. Issuance of that record is $0.001. This hook does not call
+`GET /v1/intel/trust`. `allow` and `warn` may continue. Anything else throws
+`PaymentRefused` and nothing is signed.
+
+```js
+import { verifyPaymentDecisionRecord } from 'twzrd-x402-gate/payment-decision' // @0.9.9
+import { payAndPost, PaymentRefused } from 'x402-bounty-hunter/pay'
+
+await payAndPost({
+  url,
+  body,
+  privateKey,
+  maxPriceUsd,
+  beforeSign: async (terms) => {
+    // `record` is the $0.001 payment_decision for this challenge, already in hand.
+    const verified = await verifyPaymentDecisionRecord(record, {
+      publicKeyPem: process.env.TWZRD_DECISION_PUBKEY,
+      challenge: {
+        payTo: terms.payTo,
+        amount: terms.amount,
+        resource: terms.resource,
+        network: terms.network,
+        scheme: terms.scheme,
+      },
+    })
+    if (!verified.ok || (verified.decision !== 'allow' && verified.decision !== 'warn')) {
+      throw new PaymentRefused(
+        'counterparty',
+        'no unexpired allow or warn for this challenge. Nothing was signed.',
+      )
+    }
+  },
+})
+```
 
 Use a wallet funded with only what you intend to spend. That is true of any agent
 that pays for things, not just this one.

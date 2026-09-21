@@ -17,6 +17,9 @@
  *     and verifying contract all come from our table.
  *   - The authorization window is CLAMPED, so nobody holds a live authorization
  *     over the wallet for years and settles it when it suits them.
+ *   - The server still chooses payTo, unless the caller passes beforeSign. That
+ *     hook runs after the pins above and before any signature. Omit it and the
+ *     loop signs exactly as before.
  *
  * Gas is never needed: EIP-3009 is an off-chain signature the server broadcasts
  * and pays for.
@@ -82,6 +85,46 @@ export class PaymentRefused extends Error {
   }
 }
 
+/**
+ * Optional counterparty check. Asset, network, and the price ceiling have
+ * already been pinned. A missing hook is the default: nothing extra runs.
+ * Throw PaymentRefused to stop the loop. Any other throw becomes
+ * PaymentRefused reason `before-sign`, so a hook failure cannot fall through
+ * into a signature.
+ */
+export async function applyBeforeSign(beforeSign, terms) {
+  if (beforeSign == null) return
+  if (typeof beforeSign !== 'function') {
+    throw new PaymentRefused('before-sign', 'beforeSign must be a function')
+  }
+  try {
+    await beforeSign(terms)
+  } catch (err) {
+    if (err instanceof PaymentRefused) throw err
+    const detail = err instanceof Error && err.message ? err.message : 'beforeSign refused the payment'
+    throw new PaymentRefused('before-sign', detail)
+  }
+}
+
+/** Terms a clearance can bind to this 402. `resource` prefers the challenge envelope. */
+export function clearanceTerms({ url, pick, challenge, priceUsd, amount }) {
+  const envelope = challenge?.resource
+  const resource =
+    typeof envelope === 'string' ? envelope : envelope?.url && String(envelope.url) ? String(envelope.url) : url
+  return {
+    url,
+    payTo: String(pick.payTo ?? ''),
+    network: String(pick.network ?? ''),
+    asset: String(pick.asset ?? ''),
+    scheme: String(pick.scheme ?? 'exact'),
+    amount: amount.toString(),
+    priceUsd,
+    resource,
+    accept: pick,
+    challenge,
+  }
+}
+
 /** Read the 402 challenge from either dialect: v1 in the body, v2 on the header.
  *  Exported so the Solana path in pay-svm.mjs reads a challenge exactly the same way
  *  rather than keeping a second copy that could drift. */
@@ -111,19 +154,19 @@ export function readChallenge(res, bodyText) {
  * Returns { paid, status, body, tx, priceUsd }. Throws PaymentRefused when a term
  * is unacceptable, so the caller can stop the loop rather than retry into a trap.
  */
-export async function payAndPost({ url, body, privateKey, maxPriceUsd, rpcUrl = undefined }) {
+export async function payAndPost({ url, body, privateKey, maxPriceUsd, rpcUrl = undefined, beforeSign }) {
   // A Solana key means the Solana scheme: a different signature, a different address
   // space, and a transaction rather than a typed-data signature. Routed on the key's
   // own shape so the caller never has to declare which chain it holds.
   if (isSolanaKey(privateKey)) {
     const { payAndPostSvm } = await import('./pay-svm.mjs')
-    return payAndPostSvm({ url, body, privateKey, maxPriceUsd })
+    return payAndPostSvm({ url, body, privateKey, maxPriceUsd, beforeSign })
   }
   // A 25-word mnemonic is an Algorand key. Same reasoning, a third address space: base32,
   // case-sensitive, and an atomic group rather than a single transaction.
   if (isAlgorandKey(privateKey)) {
     const { payAndPostAvm } = await import('./pay-avm.mjs')
-    return payAndPostAvm({ url, body, privateKey, maxPriceUsd })
+    return payAndPostAvm({ url, body, privateKey, maxPriceUsd, beforeSign })
   }
 
   const account = privateKeyToAccount(privateKey)
@@ -197,6 +240,12 @@ export async function payAndPost({ url, body, privateKey, maxPriceUsd, rpcUrl = 
   } catch {
     /* keep the pinned value */
   }
+
+  // Counterparty. After the pins, before EIP-3009. Unset means the loop signs.
+  await applyBeforeSign(
+    beforeSign,
+    clearanceTerms({ url, pick, challenge, priceUsd, amount: atomic }),
+  )
 
   const signature = await account.signTypedData({
     // Every field from OUR table. The server shifts none of it.
