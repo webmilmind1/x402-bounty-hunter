@@ -204,15 +204,18 @@ than trusts:
   hook runs after the pins above and before any signature, on Base, Solana, and
   Algorand. Leave it unset and the loop is unchanged. The CLI does not set it.
 
-A `beforeSign` hook is where a challenge-bound clearance goes. The record is a
-`twzrd.payment_decision.v1` for this 402: `payTo`, amount, resource, network, and
-scheme. Issuance of that record is $0.001. This hook does not call
-`GET /v1/intel/trust`. `allow` and `warn` may continue. Anything else throws
+A `beforeSign` hook is where you check the counterparty on this exact 402.
+The hook sees the pinned terms (`payTo`, amount, resource, network, scheme).
+Refuse unless `terms.payTo` is on your own allowlist for that resource. Throw
 `PaymentRefused` and nothing is signed.
 
 ```js
-import { verifyPaymentDecisionRecord } from 'twzrd-x402-gate/payment-decision' // @0.9.9
 import { payAndPost, PaymentRefused } from 'x402-bounty-hunter/pay'
+
+// Your allowlist: for each resource, the payTo addresses you will sign for.
+const allowedPayToByResource = {
+  'https://board.example/submit': new Set(['0xYourAllowedPayTo']),
+}
 
 await payAndPost({
   url,
@@ -220,21 +223,11 @@ await payAndPost({
   privateKey,
   maxPriceUsd,
   beforeSign: async (terms) => {
-    // `record` is the $0.001 payment_decision for this challenge, already in hand.
-    const verified = await verifyPaymentDecisionRecord(record, {
-      publicKeyPem: process.env.TWZRD_DECISION_PUBKEY,
-      challenge: {
-        payTo: terms.payTo,
-        amount: terms.amount,
-        resource: terms.resource,
-        network: terms.network,
-        scheme: terms.scheme,
-      },
-    })
-    if (!verified.ok || (verified.decision !== 'allow' && verified.decision !== 'warn')) {
+    const allowed = allowedPayToByResource[terms.resource]
+    if (!allowed || !allowed.has(terms.payTo)) {
       throw new PaymentRefused(
         'counterparty',
-        'no unexpired allow or warn for this challenge. Nothing was signed.',
+        'payTo is not on the allowlist for this resource. Nothing was signed.',
       )
     }
   },
