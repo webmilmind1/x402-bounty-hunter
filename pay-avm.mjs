@@ -29,7 +29,7 @@
  * lowercased. Folding one produces a string that identifies no account, which is a way to lose
  * money that looks like a formatting choice.
  */
-import { PaymentRefused, readChallenge, isAlgorandKey } from './pay.mjs'
+import { PaymentRefused, readChallenge, isAlgorandKey, applyBeforeSign, clearanceTerms } from './pay.mjs'
 
 export { isAlgorandKey }
 
@@ -77,6 +77,7 @@ export async function payAndPostAvm({
   privateKey,
   maxPriceUsd,
   algodUrl = DEFAULT_ALGOD,
+  beforeSign,
 }) {
   const {
     Algodv2,
@@ -158,6 +159,12 @@ export async function payAndPostAvm({
       'the server named no fee payer, so this payment would cost us network fees it promised to cover',
     )
   }
+
+  // Counterparty. After the asset, price, and fee-payer pins, before signTxn. Unset means the loop signs.
+  await applyBeforeSign(
+    beforeSign,
+    clearanceTerms({ url, pick, challenge, priceUsd, amount: atomic }),
+  )
 
   const payer = mnemonicToSecretKey(String(privateKey).trim())
   const algod = new Algodv2('', algodUrl, '')

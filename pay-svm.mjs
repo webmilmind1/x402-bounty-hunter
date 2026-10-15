@@ -28,7 +28,7 @@
  */
 import { svm } from 'x402/shared'
 import { createPaymentHeader } from 'x402/client'
-import { PaymentRefused, readChallenge, isSolanaKey } from './pay.mjs'
+import { PaymentRefused, readChallenge, isSolanaKey, applyBeforeSign, clearanceTerms } from './pay.mjs'
 
 export { isSolanaKey }
 
@@ -51,7 +51,7 @@ export async function solanaAddressOf(privateKey) {
  * Returns the same shape as the EVM payAndPost so the hunt loop does not branch:
  * { paid, status, body, tx, priceUsd }.
  */
-export async function payAndPostSvm({ url, body, privateKey, maxPriceUsd }) {
+export async function payAndPostSvm({ url, body, privateKey, maxPriceUsd, beforeSign }) {
   const first = await fetch(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -95,6 +95,12 @@ export async function payAndPostSvm({ url, body, privateKey, maxPriceUsd }) {
       `server asked ${priceUsd} USDC, above the ${maxPriceUsd} ceiling. Nothing was signed.`,
     )
   }
+
+  // Counterparty. After the pins, before createPaymentHeader. Unset means the loop signs.
+  await applyBeforeSign(
+    beforeSign,
+    clearanceTerms({ url, pick, challenge, priceUsd, amount: atomic }),
+  )
 
   // Only now, with the terms accepted, is anything signed. x402 builds the SPL
   // TransferChecked transaction against these requirements and the server's fee-payer.

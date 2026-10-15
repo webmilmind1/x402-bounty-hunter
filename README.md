@@ -197,6 +197,39 @@ than trusts:
 - **Authorizations are clamped** to at most 10 minutes, so nobody holds a live
   claim on your wallet.
 - **Your key is never written to disk** and never sent anywhere. It signs locally.
+- **Who you pay is still the server's choice, unless you pass `beforeSign`.** The
+  hook runs after the pins above and before any signature, on Base, Solana, and
+  Algorand. Leave it unset and the loop is unchanged. The CLI does not set it.
+
+A `beforeSign` hook is where you check the counterparty on this exact 402.
+The hook sees the pinned terms (`payTo`, amount, resource, network, scheme).
+Refuse unless `terms.payTo` is on your own allowlist for that resource. Throw
+`PaymentRefused` and nothing is signed.
+
+```js
+import { payAndPost, PaymentRefused } from 'x402-bounty-hunter/pay'
+
+// Your allowlist: for each resource, the payTo addresses you will sign for.
+const allowedPayToByResource = {
+  'https://board.example/submit': new Set(['0xYourAllowedPayTo']),
+}
+
+await payAndPost({
+  url,
+  body,
+  privateKey,
+  maxPriceUsd,
+  beforeSign: async (terms) => {
+    const allowed = allowedPayToByResource[terms.resource]
+    if (!allowed || !allowed.has(terms.payTo)) {
+      throw new PaymentRefused(
+        'counterparty',
+        'payTo is not on the allowlist for this resource. Nothing was signed.',
+      )
+    }
+  },
+})
+```
 
 Use a wallet funded with only what you intend to spend. That is true of any agent
 that pays for things, not just this one.

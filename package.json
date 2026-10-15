@@ -46,6 +46,9 @@
   "engines": {
     "node": ">=18"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "viem": "^2.21.0",
     "x402": "^1.2.0"
